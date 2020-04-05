@@ -1,6 +1,6 @@
 ## Advanced Lane Finding
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-![Lanes Image](./examples/example_output.jpg)
+![Lanes Image](./examples/example_output2.png)
 
 In this project we detect the lane lines under more challenging real conditions, including lane cruvatures, change of lighting and lane colors, shadows, and different road conditions. 
 
