@@ -28,9 +28,6 @@
 
 # ## Imports and Helper Functions
 
-# In[61]:
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -107,9 +104,6 @@ class CurveDirection(enum.Enum):
 
 # ## Camera Calibration
 
-# In[37]:
-
-
 def get_objpts(pattern_size):
     """
     Returns 3D object points for a given chessboard pattern size
@@ -171,18 +165,7 @@ def camera_calibration(images_path, pattern_size):
         raise RuntimeError("Could not calibrate camera")
 
 
-images_path = "./camera_cal/calibration*.jpg"
-pattern_size = (9, 6)
-mtx, dist_coeff = camera_calibration(images_path, pattern_size)
-print("Camera matrix: \n", mtx)
-print()
-print("Distortion coefficients: \n", dist_coeff)
-
-
 # ## Distortion Correction
-
-# In[103]:
-
 
 def correct_distortion(img, cam_matrix, dist_coeffs):
     """
@@ -192,21 +175,10 @@ def correct_distortion(img, cam_matrix, dist_coeffs):
     return cv2.undistort(img, cam_matrix, dist_coeffs, None, cam_matrix)
 
 
-image = plt.imread("./camera_cal/calibration5.jpg")
-undistored = correct_distortion(image, mtx, dist_coeff)
-show_images(image, undistored, "Original Image", "Undistored Image")
-
-image = plt.imread("./test_images/test4.jpg")
-undistored = correct_distortion(image, mtx, dist_coeff)
-show_images(image, undistored, "Original Image", "Undistored Image")
-
-
 
 # ## Gradient and Color Thresholding
 
 # ### Gradient Thresholding
-
-# In[43]:
 
 
 def abs_sobel_threshold(img, direction="x", thresh=(0, 255), ksize=3, bgr=False):
@@ -271,23 +243,8 @@ def grad_dir_threshold(img, thresh=(-np.pi/2, np.pi/2), ksize=3, bgr=False):
     return mask
 
 
-fnames = glob.glob("./test_images/*.jpg")
-image = plt.imread(fnames[2])
-sx_binary = abs_sobel_threshold(image, direction="x", thresh=(20, 120), ksize=5)
-sy_binary = abs_sobel_threshold(image, direction="y", thresh=(20, 120), ksize=5)
-mag_binary = grad_mag_threshold(image, thresh=(30, 100), ksize=7)
-dir_binary = grad_dir_threshold(image, thresh=(0.2, 0.6), ksize=7)
-
-combined_grad = np.zeros((image.shape[:2]), np.uint8)
-combined_grad[((sx_binary == 1) & (sy_binary == 1)) | ((mag_binary == 1) & (dir_binary == 1))] = 1
-
-show_images(image, combined_grad, "Original Image", "Binary Image (combined threshold)")
-
 
 # ### Color Thresholding
-
-# In[44]:
-
 
 def saturation_threshold(img, thresh=(0, 255), bgr=False):
     """
@@ -315,21 +272,36 @@ def hue_threshold(img, thresh=(0, 255), bgr=False):
     return mask
 
 
-sat_binary = saturation_threshold(image, (100, 255))
+def apply_thresholds(image):
+    """
+    Applies a different gradient thresholds combined with 
+    color threshold on Saturation and returns the resulting
+    combined binary image and a combined color image. 
+    
+    TODO: This function should get different parameters 
+    over a dictionary. 
+    """
+    sx_binary = abs_sobel_threshold(image, direction="x", thresh=(20, 120), ksize=5)
+    sy_binary = abs_sobel_threshold(image, direction="y", thresh=(20, 120), ksize=5)
+    mag_binary = grad_mag_threshold(image, thresh=(30, 100), ksize=7)
+    dir_binary = grad_dir_threshold(image, thresh=(0.2, 0.6), ksize=7)
 
-combined_binary = np.zeros_like(sat_binary)
-combined_binary[(combined_grad == 1) | (sat_binary == 1)] = 1
+    combined_grad = np.zeros((image.shape[:2]), np.uint8)
+    combined_grad[((sx_binary == 1) & (sy_binary == 1)) | ((mag_binary == 1) & (dir_binary == 1))] = 1
 
-combined_color = np.dstack((np.zeros_like(combined_grad), combined_grad, sat_binary)) * 255
+    sat_binary = saturation_threshold(image, (100, 255))
 
-show_images(combined_color, combined_binary, "Gradient and Saturation Thresholds", "Combined Binary Image")
+    combined_binary = np.zeros_like(sat_binary)
+    combined_binary[(combined_grad == 1) | (sat_binary == 1)] = 1
+
+    combined_color = np.dstack((np.zeros_like(combined_grad), combined_grad, sat_binary)) * 255
+    
+    return combined_binary, combined_color
+
+
 
 
 # ## Perspective Transformation (rectify image)
-
-# In[54]:
-
-
 def get_warp_matrix(image_size=(1280, 720), 
                     top_y=450, 
                     top_width=105, 
@@ -381,81 +353,11 @@ def rectify(image, warp_matrix, img_size=(1280, 720)):
     return cv2.warpPerspective(image, warp_matrix, img_size, flags=cv2.INTER_LINEAR)
 
 
-image = plt.imread(fnames[7])
-image_undist = correct_distortion(image, mtx, dist_coeff)
-
-src, dst, warp_matrix, warp_matrix_inv = get_warp_matrix()
-warped1 = rectify(image_undist, warp_matrix)
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
-ax1.imshow(image_undist)
-ax1.scatter(src[:, 0], src[:, 1], s=50, color="red")
-ax1.set_title("Undistored Image (source points for perspective transform are marked)")
-ax2.imshow(warped1)
-ax2.set_title("Rectified Image")
-plt.show()
-
-
-
-# In[56]:
-
-
-
-def apply_thresholds(image):
-    """
-    Applies a different gradient thresholds combined with 
-    color threshold on Saturation and returns the resulting
-    combined binary image and a combined color image. 
-    
-    TODO: This function should get different parameters 
-    over a dictionary. 
-    """
-    sx_binary = abs_sobel_threshold(image, direction="x", thresh=(20, 120), ksize=5)
-    sy_binary = abs_sobel_threshold(image, direction="y", thresh=(20, 120), ksize=5)
-    mag_binary = grad_mag_threshold(image, thresh=(30, 100), ksize=7)
-    dir_binary = grad_dir_threshold(image, thresh=(0.2, 0.6), ksize=7)
-
-    combined_grad = np.zeros((image.shape[:2]), np.uint8)
-    combined_grad[((sx_binary == 1) & (sy_binary == 1)) | ((mag_binary == 1) & (dir_binary == 1))] = 1
-
-    sat_binary = saturation_threshold(image, (100, 255))
-
-    combined_binary = np.zeros_like(sat_binary)
-    combined_binary[(combined_grad == 1) | (sat_binary == 1)] = 1
-
-    combined_color = np.dstack((np.zeros_like(combined_grad), combined_grad, sat_binary)) * 255
-    
-    return combined_binary, combined_color
-
-
-
-image = plt.imread(fnames[3])
-image_undist = correct_distortion(image, mtx, dist_coeff)
-show_image(image_undist)
-
-combined_binary, combined_color = apply_thresholds(image_undist)
-show_images(combined_color, combined_binary)
-
-
-_, _, warp_matrix, warp_matrix_inv = get_warp_matrix()
-binary_warped = rectify(combined_binary, warp_matrix)
-show_images(combined_binary, binary_warped, 
-            "Undistored binary image (combined gradient and saturation threshold)", 
-            "Warped binary image")
-
 
 # ## Detecting Lane Pixels and Fitting a Polynomial
-# 
-# 
-# 
+
 
 # ### Detecting the Lane Lines
-
-# In[62]:
-
-
-# input: bwarped
-
 
 def find_lanes_sliding_window(bwarped, nwindows=9, margin=100, minpix=50, debug=False):
     """
@@ -580,14 +482,8 @@ def find_lanes_sliding_window(bwarped, nwindows=9, margin=100, minpix=50, debug=
             
 
     
-bwarped = np.copy(binary_warped)   
-left_lane_pixels, right_lane_pixels,     offset_from_middle_of_image,         out_image = find_lanes_sliding_window(bwarped, debug=True)
-show_image(out_image, "Sliding Windows and Detected Lane Lines")
-
 
 # ### Fitting Polynemial
-
-# In[66]:
 
 
 def fit_lane_poly(bwarped, left_lane_pixels, right_lane_pixels):
@@ -638,13 +534,6 @@ def fit_lane_poly(bwarped, left_lane_pixels, right_lane_pixels):
     return left_fit, right_fit, plotys, plotleftxs, plotrightxs
     
     
-left_fit_pix, right_fit_pix,     plotys, plotleftxs, plotrightxs =         fit_lane_poly(bwarped, left_lane_pixels, right_lane_pixels)
-
-plt.imshow(out_image)
-plt.title("Fitted Polynomial (yellow curve)")
-plt.plot(plotleftxs, plotys, color="yellow")
-plt.plot(plotrightxs, plotys, color="yellow")
-
 
 # ### Determining the Curvature
 
@@ -724,22 +613,7 @@ def eval_vehicle_offset(pixel_offset, mx=3.7/780):
     return vehicle_offset, offset_direction
     
 
-yeval = np.max(plotys)
-l_radius, r_radius, c_direction = eval_lane_curvature(left_fit_pix, right_fit_pix, yeval)
-print("Left lane curvature: ", l_radius)
-print("Right lane curvature: ", r_radius)
-print(c_direction)
-print("\n")
-
-vehicle_offset, offset_direction = eval_vehicle_offset(offset_from_middle_of_image)
-print("Offset in pixels: ", offset_from_middle_of_image)
-print(f"Vehicle is {abs(vehicle_offset):2.2f}m {offset_direction} of the lane center.")
-
-
 # ## Warping Detected Lanes Back to the Image
-
-# In[90]:
-
 
 def visualize_lane(undist_img, bwarped_img_shape, 
                    warp_matrix_inv, ys, 
@@ -808,21 +682,9 @@ def visualize_info(img, l_radius, r_radius, c_direction,
     return img
 
 
-undist = correct_distortion(image, mtx, dist_coeff)
-result = visualize_lane(undist, bwarped.shape, 
-                        warp_matrix_inv, plotys, 
-                        plotleftxs, plotrightxs)
-result = visualize_info(result, l_radius, r_radius, c_direction, 
-                            vehicle_offset, offset_direction)
-show_image(result, "Visualizing detected lane, curvature, and vehicle offset")
 
 
 # ## Complete Pipeline
-# 
-# 
-
-# In[91]:
-
 
 # Camera Calibration
 images_path = "./camera_cal/calibration*.jpg"
@@ -834,10 +696,6 @@ print("------------------------\n")
 
 # Prepare perspective transform matrix
 src, dst, warp_matrix, warp_matrix_inv = get_warp_matrix()
-
-
-# In[93]:
-
 
 
 # For each image in test images: 
@@ -876,16 +734,11 @@ for i, fname in enumerate(fnames):
 
 # ## Pipeline on Video
 
-# In[15]:
 
 
 # Import everything needed to edit/save/watch video clips
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
-
-
-# In[22]:
-
 
 def process_image(image):
     image_undist = correct_distortion(image, mtx, dist_coeff)
