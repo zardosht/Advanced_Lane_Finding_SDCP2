@@ -8,7 +8,7 @@ The **input** is camera videos of a vechicle driving on a highway and the **outp
 
 Thre [writeup](https://github.com/zardosht/udacity_selfdriving_car/blob/master/P2_Advanced_Lane_Finding/writeup_template.md) explains steps of the pipeline in details. 
 
-The requirements to pass the porject are listed [here](https://review.udacity.com/#!/rubrics/1966/view)
+The requirements to pass the porject are listed [here](./P2_Project_Rubric.pdf)
 
 
 The Project
